@@ -20,23 +20,45 @@ final class AppModel {
     let store: PlanStore
     /// The MCP endpoint's listener.
     let server: MCPServer
+    /// Whether the app starts when the user logs in.
+    let launchAtLogin: LaunchAtLogin
 
     /// The port the server listens on (or will, once started).
     private(set) var port: UInt16
 
     @ObservationIgnored private let defaults: UserDefaults
     @ObservationIgnored private var hasStarted = false
+    @ObservationIgnored private let notifier: (any PlanNotifying)?
 
     /// Creates the object graph.
     /// - Parameters:
     ///   - store: The plan store. Tests and previews pass one rooted in a temporary directory.
     ///   - defaults: Where settings are persisted.
-    init(store: PlanStore = PlanStore(), defaults: UserDefaults = .standard) {
+    ///   - notifier: Announces new plans to the user. Nil (the default) disables notifications, which keeps
+    ///     tests and previews from touching the system notification center.
+    ///   - launchAtLogin: Manages the login item.
+    init(
+        store: PlanStore = PlanStore(),
+        defaults: UserDefaults = .standard,
+        notifier: (any PlanNotifying)? = nil,
+        launchAtLogin: LaunchAtLogin = LaunchAtLogin()
+    ) {
         self.store = store
         self.defaults = defaults
+        self.notifier = notifier
+        self.launchAtLogin = launchAtLogin
         let saved = defaults.integer(forKey: Self.portDefaultsKey)
         self.port = UInt16(exactly: saved).flatMap { $0 >= Self.minimumPort ? $0 : nil } ?? Self.defaultPort
         self.server = MCPServer(router: MCPRouter(tools: PlanTools(store: store)))
+
+        if let notifier {
+            store.onPlanCreated = { plan in
+                Task { await notifier.planCreated(plan) }
+            }
+            notifier.onOpenPlan = { [store] planID in
+                store.requestWindow(for: planID)
+            }
+        }
     }
 
     /// Lowest port the user may choose; below this are privileged ports.

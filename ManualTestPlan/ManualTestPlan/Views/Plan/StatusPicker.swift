@@ -5,9 +5,10 @@
 
 import SwiftUI
 
-/// Three buttons for recording a verdict. Pressing the active one again returns the step to pending.
+/// Three buttons for recording a verdict. The caller decides what pressing the active one again means.
 struct StatusPicker: View {
     let status: StepStatus
+    /// Called with the button the user pressed.
     let select: (StepStatus) -> Void
 
     private static let choices: [StepStatus] = [.passed, .failed, .blocked]
@@ -16,7 +17,7 @@ struct StatusPicker: View {
         HStack {
             ForEach(Self.choices, id: \.self) { choice in
                 StatusButton(choice: choice, isSelected: status == choice) {
-                    select(choice.afterSelecting(from: status))
+                    select(choice)
                 }
             }
         }

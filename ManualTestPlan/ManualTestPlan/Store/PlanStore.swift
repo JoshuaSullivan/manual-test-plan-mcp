@@ -28,6 +28,9 @@ final class PlanStore {
     /// ``consumeWindowRequest(_:)`` once it has acted on them.
     private(set) var windowRequests: [String] = []
 
+    /// Called after an agent creates a plan, once it is in ``plans``. The app uses it to notify the user.
+    @ObservationIgnored var onPlanCreated: ((TestPlan) -> Void)?
+
     @ObservationIgnored private let persistence: PlanPersistence
     @ObservationIgnored private let logger = Logger(subsystem: "com.joshuasullivan.ManualTestPlan", category: "Store")
     @ObservationIgnored private var saveTasks: [String: Task<Void, Never>] = [:]
@@ -123,6 +126,7 @@ final class PlanStore {
         plans.append(plan)
         scheduleSave(plan.id)
         windowRequests.append(plan.id)
+        onPlanCreated?(plan)
         return plan
     }
 

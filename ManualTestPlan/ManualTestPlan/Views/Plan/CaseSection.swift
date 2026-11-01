@@ -8,8 +8,10 @@ import SwiftUI
 /// A collapsible group of steps. The header shows the case's rolled-up status so a collapsed section still
 /// tells the user where things stand.
 struct CaseSection: View {
-    let planID: String
+    let plan: TestPlan
     let testCase: TestCase
+    let navigator: StepNavigator
+    let focusedStep: FocusState<String?>.Binding
 
     @State private var isExpanded = true
 
@@ -22,7 +24,7 @@ struct CaseSection: View {
                         .foregroundStyle(.secondary)
                 }
                 ForEach(testCase.steps) { step in
-                    StepRow(planID: planID, step: step)
+                    StepRow(plan: plan, step: step, navigator: navigator, focusedStep: focusedStep)
                 }
             }
             .padding(.top)

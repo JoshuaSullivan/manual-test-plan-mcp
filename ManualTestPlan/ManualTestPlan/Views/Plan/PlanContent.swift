@@ -9,12 +9,15 @@ import SwiftUI
 struct PlanContent: View {
     let plan: TestPlan
 
+    @FocusState private var focusedStep: String?
+
     var body: some View {
+        let navigator = StepNavigator(plan: plan)
         ScrollView {
             LazyVStack(alignment: .leading) {
                 PlanHeader(plan: plan)
                 ForEach(plan.cases) { testCase in
-                    CaseSection(planID: plan.id, testCase: testCase)
+                    CaseSection(plan: plan, testCase: testCase, navigator: navigator, focusedStep: $focusedStep)
                 }
             }
             .padding()

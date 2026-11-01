@@ -8,7 +8,7 @@ import SwiftUI
 @main
 struct ManualTestPlanApp: App {
     @NSApplicationDelegateAdaptor private var delegate: AppDelegate
-    @State private var model = AppModel()
+    @State private var model = AppModel(notifier: PlanNotifier())
 
     var body: some Scene {
         MenuBarExtra {

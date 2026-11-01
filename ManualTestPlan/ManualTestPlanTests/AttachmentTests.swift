@@ -226,7 +226,7 @@ struct AppModelTests {
         #expect(model.setupCommand == "claude mcp add --transport http manualtestplan http://127.0.0.1:47821/mcp")
     }
 
-    @Test func rememembersAChosenPortAcrossLaunches() {
+    @Test func remembersAChosenPortAcrossLaunches() {
         let defaults = isolatedDefaults()
         let first = makeModel(defaults: defaults)
         first.changePort(to: 50_123)

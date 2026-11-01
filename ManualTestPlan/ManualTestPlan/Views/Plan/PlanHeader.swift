@@ -39,6 +39,10 @@ struct PlanHeader: View {
                 CountBadge(status: .pending, count: progress.pending)
             }
             .font(.callout)
+
+            Text("Click a step, then press P (passed), F (failed) or B (blocked). ↑ ↓ move between steps.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
         }
     }
 }

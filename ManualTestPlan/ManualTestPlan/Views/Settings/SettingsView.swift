@@ -32,6 +32,20 @@ struct SettingsView: View {
                 }
             }
 
+            Section("General") {
+                Toggle("Launch at login", isOn: launchAtLoginBinding)
+                if model.launchAtLogin.needsApproval {
+                    Text("Approve ManualTestPlan in System Settings › General › Login Items.")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                }
+                if let message = model.launchAtLogin.errorMessage {
+                    Text(message)
+                        .font(.callout)
+                        .foregroundStyle(.red)
+                }
+            }
+
             Section("Connect an Agent") {
                 Text("Run this once in a terminal to give Claude Code access to ManualTestPlan:")
                     .font(.callout)
@@ -46,6 +60,13 @@ struct SettingsView: View {
         }
         .formStyle(.grouped)
         .frame(width: 480)
+    }
+
+    private var launchAtLoginBinding: Binding<Bool> {
+        Binding(
+            get: { model.launchAtLogin.isEnabled },
+            set: { model.launchAtLogin.setEnabled($0) }
+        )
     }
 
     private func applyPort() {
