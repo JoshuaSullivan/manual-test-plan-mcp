@@ -17,6 +17,8 @@ nonisolated enum PlanStoreError: LocalizedError, Equatable {
     case unresolvedSteps([String])
     /// The plan is in the middle of being completed and deleted.
     case planIsBeingCompleted(String)
+    /// An attachment exceeds the size limit.
+    case evidenceTooLarge(name: String, limit: Int)
 
     var errorDescription: String? {
         switch self {
@@ -30,6 +32,8 @@ nonisolated enum PlanStoreError: LocalizedError, Equatable {
             "\(ids.count) step(s) still have no verdict: \(ids.joined(separator: ", ")). Wait for the user to finish, or pass force=true to discard the plan anyway."
         case .planIsBeingCompleted(let id):
             "Test plan '\(id)' is being completed."
+        case .evidenceTooLarge(let name, let limit):
+            "'\(name)' is larger than the \(limit.formatted(.byteCount(style: .file))) attachment limit."
         }
     }
 }

@@ -42,7 +42,7 @@ nonisolated enum PlanReport {
                     lines.append("   - Note: \(note)")
                 }
                 if !step.evidence.isEmpty {
-                    lines.append("   - Evidence: \(step.evidence.count) screenshot(s) attached")
+                    lines.append("   - Evidence: \(step.evidence.map(\.name).joined(separator: ", "))")
                 }
             }
             lines.append("")

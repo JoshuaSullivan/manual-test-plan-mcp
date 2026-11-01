@@ -178,7 +178,7 @@ struct PlanToolsTests {
             let planID = try #require(created["plan_id"]?.stringValue)
             let stepID = try #require(harness.store.plan(id: planID)?.cases[0].steps[0].id)
             let png = Data([0x89, 0x50, 0x4E, 0x47, 1, 2, 3])
-            try await harness.store.addEvidence(png, toStep: stepID, inPlan: planID)
+            try await harness.store.addEvidence(png, named: "shot.png", toStep: stepID, inPlan: planID)
 
             let reply = await harness.call("get_step_evidence", ["plan_id": .string(planID), "step_id": .string(stepID)])
             #expect(!reply.isError)
@@ -318,7 +318,7 @@ struct PlanToolsTests {
             try harness.store.setStatus(.failed, forStep: steps[1].id, inPlan: planID)
             try harness.store.setNote("Order lost", forStep: steps[1].id, inPlan: planID)
             try harness.store.setStatus(.passed, forStep: steps[2].id, inPlan: planID)
-            try await harness.store.addEvidence(Data([1]), toStep: steps[1].id, inPlan: planID)
+            try await harness.store.addEvidence(Data([1]), named: "shot.png", toStep: steps[1].id, inPlan: planID)
 
             let reply = await harness.call("complete_test_plan", ["plan_id": .string(planID)])
 
@@ -326,7 +326,7 @@ struct PlanToolsTests {
             #expect(reply.text.contains("# Kanban board"))
             #expect(reply.text.contains("**Result: FAIL**"))
             #expect(reply.text.contains("Note: Order lost"))
-            #expect(reply.text.contains("1 screenshot(s) attached"))
+            #expect(reply.text.contains("Evidence: shot.png"))
             #expect(reply.text.contains(steps[1].id))
             #expect(!FileManager.default.fileExists(atPath: harness.root.appending(path: planID).path(percentEncoded: false)))
 

@@ -17,8 +17,8 @@ nonisolated struct TestStep: Codable, Sendable, Hashable, Identifiable {
     var status: StepStatus
     /// Free-form text the user typed while judging the step.
     var note: String
-    /// Images the user attached as evidence.
-    var evidence: [EvidenceImage]
+    /// Files the user attached as evidence.
+    var evidence: [EvidenceFile]
     /// When the step was last changed by the user or the agent.
     var updatedAt: Date
 

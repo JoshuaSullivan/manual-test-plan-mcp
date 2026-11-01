@@ -82,12 +82,20 @@ final class PlanStore {
         return plans.filter { plan in terms.allSatisfy(plan.matches) }
     }
 
-    /// Reads an evidence image's bytes from disk.
+    /// Reads an evidence file's bytes from disk.
     /// - Parameters:
-    ///   - image: The reference stored on a step.
+    ///   - file: The reference stored on a step.
     ///   - planID: The owning plan.
-    func evidenceData(for image: EvidenceImage, inPlan planID: String) async throws -> Data {
-        try await persistence.readEvidence(filename: image.filename, planID: planID)
+    func evidenceData(for file: EvidenceFile, inPlan planID: String) async throws -> Data {
+        try await persistence.readEvidence(filename: file.storedFilename, planID: planID)
+    }
+
+    /// Where an evidence file is stored on disk, or nil if the identifiers are invalid.
+    /// - Parameters:
+    ///   - file: The reference stored on a step.
+    ///   - planID: The owning plan.
+    func evidenceURL(for file: EvidenceFile, inPlan planID: String) -> URL? {
+        try? persistence.evidenceFileURL(filename: file.storedFilename, planID: planID)
     }
 
     // MARK: - Agent operations
@@ -210,42 +218,50 @@ final class PlanStore {
         try mutateStep(stepID, inPlan: planID, debounce: .milliseconds(300)) { $0.note = note }
     }
 
-    /// Attaches an image to a step as evidence.
+    /// Attaches a file of any type to a step as evidence.
     ///
-    /// The file is written before the reference is added, so a saved plan never points at a missing image.
+    /// The file is written before the reference is added, so a saved plan never points at a missing file.
     /// - Parameters:
-    ///   - pngData: The image, already normalized to PNG.
+    ///   - data: The file's contents. Images are expected to be normalized by the caller.
+    ///   - name: The file name to show, such as `crash.log`.
     ///   - stepID: The step to attach it to.
     ///   - planID: The plan containing the step.
-    func addEvidence(_ pngData: Data, toStep stepID: String, inPlan planID: String) async throws {
+    /// - Returns: The stored record.
+    /// - Throws: ``PlanStoreError/evidenceTooLarge(name:limit:)`` above ``EvidenceFile/maxByteCount``.
+    @discardableResult
+    func addEvidence(_ data: Data, named name: String, toStep stepID: String, inPlan planID: String) async throws -> EvidenceFile {
         guard let plan = plan(id: planID) else { throw PlanStoreError.planNotFound(planID) }
         guard plan.step(withID: stepID) != nil else { throw PlanStoreError.stepNotFound(stepID) }
         guard !completing.contains(planID) else { throw PlanStoreError.planIsBeingCompleted(planID) }
+        guard data.count <= EvidenceFile.maxByteCount else {
+            throw PlanStoreError.evidenceTooLarge(name: name, limit: EvidenceFile.maxByteCount)
+        }
 
-        let image = EvidenceImage()
-        try await persistence.writeEvidence(pngData, filename: image.filename, planID: planID)
+        let file = EvidenceFile(name: name, byteCount: data.count)
+        try await persistence.writeEvidence(data, filename: file.storedFilename, planID: planID)
         do {
-            try mutateStep(stepID, inPlan: planID, wakesWaiters: true) { $0.evidence.append(image) }
+            try mutateStep(stepID, inPlan: planID, wakesWaiters: true) { $0.evidence.append(file) }
         } catch {
-            try? await persistence.deleteEvidence(filename: image.filename, planID: planID)
+            try? await persistence.deleteEvidence(filename: file.storedFilename, planID: planID)
             throw error
         }
+        return file
     }
 
-    /// Removes an evidence image: the reference first, then the file once the updated plan is saved.
+    /// Removes an evidence file: the reference first, then the file once the updated plan is saved.
     /// - Parameters:
-    ///   - imageID: The ``EvidenceImage/id`` to remove.
+    ///   - fileID: The ``EvidenceFile/id`` to remove.
     ///   - stepID: The step it's attached to.
     ///   - planID: The plan containing the step.
-    func removeEvidence(_ imageID: String, fromStep stepID: String, inPlan planID: String) async throws {
-        var removed: EvidenceImage?
+    func removeEvidence(_ fileID: String, fromStep stepID: String, inPlan planID: String) async throws {
+        var removed: EvidenceFile?
         try mutateStep(stepID, inPlan: planID) { step in
-            removed = step.evidence.first { $0.id == imageID }
-            step.evidence.removeAll { $0.id == imageID }
+            removed = step.evidence.first { $0.id == fileID }
+            step.evidence.removeAll { $0.id == fileID }
         }
         guard let removed else { return }
         await saveTasks[planID]?.value
-        try await persistence.deleteEvidence(filename: removed.filename, planID: planID)
+        try await persistence.deleteEvidence(filename: removed.storedFilename, planID: planID)
     }
 
     /// Acknowledges a window request so it isn't acted on twice.

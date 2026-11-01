@@ -56,12 +56,12 @@ struct PlanPersistenceTests {
         try await withTemporaryRoot { root in
             let persistence = PlanPersistence(rootDirectory: root)
             var plan = makePlan()
-            let evidence = EvidenceImage()
+            let evidence = EvidenceFile(name: "shot.png", byteCount: 3)
             plan.cases[0].steps[0].evidence = [evidence]
             try await persistence.save(plan)
-            try await persistence.writeEvidence(Data([1, 2, 3]), filename: evidence.filename, planID: plan.id)
+            try await persistence.writeEvidence(Data([1, 2, 3]), filename: evidence.storedFilename, planID: plan.id)
             let planDirectory = root.appending(path: plan.id)
-            #expect(exists(planDirectory.appending(path: "evidence/\(evidence.filename)")))
+            #expect(exists(planDirectory.appending(path: "evidence/\(evidence.storedFilename)")))
 
             try await persistence.delete(planID: plan.id)
 
@@ -81,16 +81,16 @@ struct PlanPersistenceTests {
         try await withTemporaryRoot { root in
             let persistence = PlanPersistence(rootDirectory: root)
             let plan = makePlan()
-            let evidence = EvidenceImage()
+            let evidence = EvidenceFile(name: "shot.png", byteCount: 3)
             let bytes = Data([9, 8, 7])
-            try await persistence.writeEvidence(bytes, filename: evidence.filename, planID: plan.id)
+            try await persistence.writeEvidence(bytes, filename: evidence.storedFilename, planID: plan.id)
 
-            #expect(try await persistence.readEvidence(filename: evidence.filename, planID: plan.id) == bytes)
+            #expect(try await persistence.readEvidence(filename: evidence.storedFilename, planID: plan.id) == bytes)
 
-            try await persistence.deleteEvidence(filename: evidence.filename, planID: plan.id)
-            #expect(!exists(root.appending(path: "\(plan.id)/evidence/\(evidence.filename)")))
+            try await persistence.deleteEvidence(filename: evidence.storedFilename, planID: plan.id)
+            #expect(!exists(root.appending(path: "\(plan.id)/evidence/\(evidence.storedFilename)")))
             // Deleting again is harmless.
-            try await persistence.deleteEvidence(filename: evidence.filename, planID: plan.id)
+            try await persistence.deleteEvidence(filename: evidence.storedFilename, planID: plan.id)
         }
     }
 
@@ -115,12 +115,12 @@ struct PlanPersistenceTests {
         try await withTemporaryRoot { root in
             let persistence = PlanPersistence(rootDirectory: root)
             var plan = makePlan()
-            let kept = EvidenceImage()
+            let kept = EvidenceFile(name: "shot.png", byteCount: 3)
             plan.cases[0].steps[0].evidence = [kept]
             try await persistence.save(plan)
-            try await persistence.writeEvidence(Data([1]), filename: kept.filename, planID: plan.id)
-            let orphanImage = EvidenceImage()
-            try await persistence.writeEvidence(Data([2]), filename: orphanImage.filename, planID: plan.id)
+            try await persistence.writeEvidence(Data([1]), filename: kept.storedFilename, planID: plan.id)
+            let orphanImage = EvidenceFile(name: "shot.png", byteCount: 3)
+            try await persistence.writeEvidence(Data([2]), filename: orphanImage.storedFilename, planID: plan.id)
 
             // A directory with no plan.json is a crash leftover.
             let orphanDirectory = root.appending(path: "tp_orphan", directoryHint: .isDirectory)
@@ -135,9 +135,9 @@ struct PlanPersistenceTests {
             #expect(known == [plan])
             let removed = await persistence.sweepOrphans(knownPlans: known)
 
-            #expect(Set(removed) == ["tp_orphan", "\(plan.id)/evidence/\(orphanImage.filename)"])
-            #expect(exists(root.appending(path: "\(plan.id)/evidence/\(kept.filename)")))
-            #expect(!exists(root.appending(path: "\(plan.id)/evidence/\(orphanImage.filename)")))
+            #expect(Set(removed) == ["tp_orphan", "\(plan.id)/evidence/\(orphanImage.storedFilename)"])
+            #expect(exists(root.appending(path: "\(plan.id)/evidence/\(kept.storedFilename)")))
+            #expect(!exists(root.appending(path: "\(plan.id)/evidence/\(orphanImage.storedFilename)")))
             #expect(!exists(orphanDirectory))
             #expect(exists(corruptDirectory.appending(path: "plan.json")))
         }

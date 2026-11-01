@@ -75,7 +75,7 @@ struct TestPlanTests {
         var plan = makePlan()
         plan.cases[0].steps[0].status = .failed
         plan.cases[0].steps[0].note = "Card snapped back"
-        plan.cases[0].steps[0].evidence = [EvidenceImage()]
+        plan.cases[0].steps[0].evidence = [EvidenceFile(name: "shot.png", byteCount: 3)]
 
         let data = try JSONEncoder().encode(plan)
         let decoded = try JSONDecoder().decode(TestPlan.self, from: data)

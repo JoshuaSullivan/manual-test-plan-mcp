@@ -161,13 +161,17 @@ final class PlanTools: MCPToolProvider {
         let plan = try requirePlan(input.planId)
         guard let step = plan.step(withID: input.stepId) else { throw PlanStoreError.stepNotFound(input.stepId) }
 
-        var result = MCPToolResult.json(StepOutput(step))
-        for image in step.evidence {
+        func path(_ file: EvidenceFile) -> String? {
+            store.evidenceURL(for: file, inPlan: plan.id)?.path(percentEncoded: false)
+        }
+
+        var result = MCPToolResult.json(StepOutput(step, localPath: path))
+        for file in step.evidence {
             do {
-                let data = try await store.evidenceData(for: image, inPlan: plan.id)
-                result.content.append(.image(data, mimeType: "image/png"))
+                let data = try await store.evidenceData(for: file, inPlan: plan.id)
+                result.content.append(contentsOf: EvidenceContent.blocks(for: file, data: data, localPath: path(file)))
             } catch {
-                result.content.append(.text("Screenshot \(image.id) could not be read: \(error.localizedDescription)"))
+                result.content.append(.text("Attachment '\(file.name)' could not be read: \(error.localizedDescription)"))
             }
         }
         return result
@@ -217,7 +221,7 @@ final class PlanTools: MCPToolProvider {
     private func completePlan(_ arguments: JSONValue) async throws -> MCPToolResult {
         let input = try arguments.decoded(as: CompleteArguments.self)
         let plan = try await store.complete(planID: input.planId, force: input.force ?? false)
-        let header = "Test plan \(plan.id) was completed and deleted from the user's Mac, including its screenshots. Final report:\n\n"
+        let header = "Test plan \(plan.id) was completed and deleted from the user's Mac, including every attached file. Final report:\n\n"
         return .text(header + PlanReport.markdown(for: plan, includeIDs: true))
     }
 

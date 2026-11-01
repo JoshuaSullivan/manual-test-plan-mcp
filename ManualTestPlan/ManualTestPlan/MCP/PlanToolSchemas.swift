@@ -22,11 +22,11 @@ nonisolated enum PlanToolSchemas {
         2. Call wait_for_test_plan repeatedly, passing back the `revision` it returns as `since_revision`, \
         until `resolved` is true. Or do other work and poll with get_test_plan.
         3. Read the user's notes on failed and blocked steps, and call get_step_evidence to see any \
-        screenshots they attached.
+        screenshots, logs, or other files they attached (steps report `evidence_count`).
         4. A `blocked` step means the user could not perform or verify it, usually because your instructions \
         did not match what is on screen. Fix the instructions with revise_step instead of treating it as an \
         app bug. A `failed` step means the step ran and the behavior was wrong.
-        5. When you are done, call complete_test_plan. That deletes the plan and its screenshots, so fetch any \
+        5. When you are done, call complete_test_plan. That deletes the plan and all attached files, so fetch any \
         evidence you need first.
         """
 
@@ -44,7 +44,7 @@ nonisolated enum PlanToolSchemas {
             Create a manual test plan for the user to work through and open it in a window on their Mac. \
             Returns the plan_id plus case_id and step_id values; keep them to query results later. \
             Write each step as an action the user can perform plus the outcome they should see. The user marks \
-            every step passed, failed, or blocked, and may add notes and screenshots.
+            every step passed, failed, or blocked, and may add notes and attach files such as screenshots or logs.
             """,
         inputSchema: object(
             properties: [
@@ -77,7 +77,7 @@ nonisolated enum PlanToolSchemas {
     static let waitForTestPlan = MCPToolDefinition(
         name: "wait_for_test_plan",
         description: """
-            Block until the user records a verdict or attaches a screenshot after `since_revision`, or until \
+            Block until the user records a verdict or attaches a file after `since_revision`, or until \
             the timeout passes. Typing a note does not wake it. Returns the plan summary, `changed`, and \
             `timed_out`. Keep calling it, passing the returned `revision` as `since_revision`, until \
             `resolved` is true. If since_revision is omitted, the wait starts from the current revision.
@@ -95,7 +95,10 @@ nonisolated enum PlanToolSchemas {
     static let getStepEvidence = MCPToolDefinition(
         name: "get_step_evidence",
         description: """
-            Get the screenshots and note the user attached to one step. Images are returned as image content.
+            Get the files and note the user attached to one step as evidence: screenshots, logs, crash reports, \
+            or anything else. Images are returned as image content and text files inline (very long ones keep \
+            their beginning and end). Other files are described, and every file's `local_path` lets you open the \
+            full file yourself.
             """,
         inputSchema: object(
             properties: [
@@ -141,7 +144,7 @@ nonisolated enum PlanToolSchemas {
         description: """
             Rewrite a step's instruction and/or expected result and reset it to pending so the user judges it \
             again. Use this after a step comes back blocked because your instructions were wrong or \
-            ambiguous. The user's earlier note and screenshots are kept.
+            ambiguous. The user's earlier note and attachments are kept.
             """,
         inputSchema: object(
             properties: [
@@ -157,9 +160,9 @@ nonisolated enum PlanToolSchemas {
     static let completeTestPlan = MCPToolDefinition(
         name: "complete_test_plan",
         description: """
-            Finish a plan: returns the final report as Markdown, then permanently deletes the plan and all \
-            screenshots from the user's Mac and closes its window. Refused while steps are still pending unless \
-            force=true. Fetch any screenshots you need with get_step_evidence first.
+            Finish a plan: returns the final report as Markdown, then permanently deletes the plan and every \
+            attached file from the user's Mac and closes its window. Refused while steps are still pending unless \
+            force=true. Fetch any evidence you need with get_step_evidence first.
             """,
         inputSchema: object(
             properties: [

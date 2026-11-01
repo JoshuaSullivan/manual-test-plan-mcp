@@ -137,9 +137,9 @@ struct PlanStoreTests {
                 try store.setStatus(.passed, forStep: step.id, inPlan: plan.id)
             }
             let stepID = plan.cases[0].steps[0].id
-            try await store.addEvidence(Data([1, 2, 3]), toStep: stepID, inPlan: plan.id)
+            try await store.addEvidence(Data([1, 2, 3]), named: "shot.png", toStep: stepID, inPlan: plan.id)
             let image = try #require(store.plan(id: plan.id)?.step(withID: stepID)?.evidence.first)
-            let evidenceFile = root.appending(path: "\(plan.id)/evidence/\(image.filename)")
+            let evidenceFile = root.appending(path: "\(plan.id)/evidence/\(image.storedFilename)")
             #expect(exists(evidenceFile))
 
             let report = try await store.complete(planID: plan.id, force: false)
@@ -176,14 +176,14 @@ struct PlanStoreTests {
         try await withStore { store, root in
             let plan = store.createPlan(title: "Kanban", cases: sampleCases())
             let stepID = plan.cases[0].steps[0].id
-            try await store.addEvidence(Data([7]), toStep: stepID, inPlan: plan.id)
+            try await store.addEvidence(Data([7]), named: "shot.png", toStep: stepID, inPlan: plan.id)
             let image = try #require(store.plan(id: plan.id)?.step(withID: stepID)?.evidence.first)
             #expect(try await store.evidenceData(for: image, inPlan: plan.id) == Data([7]))
 
             try await store.removeEvidence(image.id, fromStep: stepID, inPlan: plan.id)
 
             #expect(store.plan(id: plan.id)?.step(withID: stepID)?.evidence.isEmpty == true)
-            #expect(!exists(root.appending(path: "\(plan.id)/evidence/\(image.filename)")))
+            #expect(!exists(root.appending(path: "\(plan.id)/evidence/\(image.storedFilename)")))
         }
     }
 
@@ -191,7 +191,7 @@ struct PlanStoreTests {
         try await withStore { store, root in
             let plan = store.createPlan(title: "Kanban", cases: sampleCases())
             await #expect(throws: PlanStoreError.stepNotFound("st_nope")) {
-                try await store.addEvidence(Data([1]), toStep: "st_nope", inPlan: plan.id)
+                try await store.addEvidence(Data([1]), named: "shot.png", toStep: "st_nope", inPlan: plan.id)
             }
             #expect(!exists(root.appending(path: "\(plan.id)/evidence")))
         }

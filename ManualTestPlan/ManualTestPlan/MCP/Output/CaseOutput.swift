@@ -32,6 +32,6 @@ nonisolated struct CaseOutput: Encodable {
         self.progress = progress
         steps = testCase.steps
             .filter { detail == .full || $0.status == .failed || $0.status == .blocked }
-            .map(StepOutput.init)
+            .map { StepOutput($0) }
     }
 }

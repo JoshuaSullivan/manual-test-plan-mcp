@@ -17,7 +17,7 @@ nonisolated enum PlanPersistenceError: Error, Equatable {
 /// Layout, relative to `rootDirectory`:
 /// ```
 /// <planID>/plan.json
-/// <planID>/evidence/<imageID>.png
+/// <planID>/evidence/<evidenceID>.<extension>
 /// ```
 /// Everything belonging to a plan lives inside its own directory, so removing the directory removes the
 /// plan and all of its evidence together. This type performs no debouncing; callers decide when to save.
@@ -94,10 +94,10 @@ actor PlanPersistence {
 
     // MARK: - Evidence
 
-    /// Writes an evidence image's bytes into the plan's evidence directory.
+    /// Writes an evidence file's bytes into the plan's evidence directory.
     /// - Parameters:
-    ///   - data: PNG data.
-    ///   - filename: The image's file name, from ``EvidenceImage/filename``.
+    ///   - data: The file's contents.
+    ///   - filename: The stored file name, from ``EvidenceFile/storedFilename``.
     ///   - planID: The owning plan.
     func writeEvidence(_ data: Data, filename: String, planID: String) throws {
         let url = try evidenceURL(filename: filename, planID: planID)
@@ -105,17 +105,28 @@ actor PlanPersistence {
         try data.write(to: url, options: .atomic)
     }
 
-    /// Reads an evidence image's bytes.
+    /// Reads an evidence file's bytes.
     /// - Parameters:
-    ///   - filename: The image's file name.
+    ///   - filename: The stored file name.
     ///   - planID: The owning plan.
     func readEvidence(filename: String, planID: String) throws -> Data {
         try Data(contentsOf: evidenceURL(filename: filename, planID: planID))
     }
 
-    /// Deletes one evidence image's file. A missing file is not an error.
+    /// Where an evidence file lives on disk.
+    ///
+    /// Agents run as the same user and can read this path, which lets them open files too large or too
+    /// binary to be returned inline. The file is deleted when the plan is completed.
     /// - Parameters:
-    ///   - filename: The image's file name.
+    ///   - filename: The stored file name.
+    ///   - planID: The owning plan.
+    nonisolated func evidenceFileURL(filename: String, planID: String) throws -> URL {
+        try evidenceURL(filename: filename, planID: planID)
+    }
+
+    /// Deletes one evidence file. A missing file is not an error.
+    /// - Parameters:
+    ///   - filename: The stored file name.
     ///   - planID: The owning plan.
     func deleteEvidence(filename: String, planID: String) throws {
         let url = try evidenceURL(filename: filename, planID: planID)
@@ -152,7 +163,7 @@ actor PlanPersistence {
             guard let files = try? fileManager.contentsOfDirectory(atPath: evidenceDirectory.path(percentEncoded: false)) else {
                 continue
             }
-            let referenced = Set(plan.cases.flatMap(\.steps).flatMap(\.evidence).map(\.filename))
+            let referenced = Set(plan.cases.flatMap(\.steps).flatMap(\.evidence).map(\.storedFilename))
             for file in files where !referenced.contains(file) {
                 if (try? fileManager.removeItem(at: evidenceDirectory.appending(path: file))) != nil {
                     removed.append("\(plan.id)/\(Self.evidenceDirectoryName)/\(file)")
@@ -169,15 +180,15 @@ actor PlanPersistence {
     // MARK: - Paths
 
     /// The directory for a plan, validated so an agent-supplied ID can't traverse out of the root.
-    private func planDirectory(for planID: String) throws -> URL {
+    private nonisolated func planDirectory(for planID: String) throws -> URL {
         guard planID.wholeMatch(of: /[a-z0-9_]+/) != nil else {
             throw PlanPersistenceError.invalidIdentifier(planID)
         }
         return rootDirectory.appending(path: planID, directoryHint: .isDirectory)
     }
 
-    private func evidenceURL(filename: String, planID: String) throws -> URL {
-        guard filename.wholeMatch(of: /[a-z0-9_]+\.png/) != nil else {
+    private nonisolated func evidenceURL(filename: String, planID: String) throws -> URL {
+        guard filename.wholeMatch(of: /[a-z0-9_]+\.[a-z0-9]{1,16}/) != nil else {
             throw PlanPersistenceError.invalidIdentifier(filename)
         }
         return try planDirectory(for: planID)
