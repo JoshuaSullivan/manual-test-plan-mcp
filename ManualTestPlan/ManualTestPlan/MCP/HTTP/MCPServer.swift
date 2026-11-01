@@ -34,8 +34,6 @@ final class MCPServer {
     @ObservationIgnored private var listenTask: Task<Void, Never>?
     @ObservationIgnored private let logger = Logger(subsystem: "com.joshuasullivan.ManualTestPlan", category: "Server")
 
-    /// The most simultaneous client connections accepted.
-    private static let connectionLimit = 32
     private static let receiveChunkSize = 64 * 1024
 
     /// Creates a stopped server.
@@ -56,8 +54,9 @@ final class MCPServer {
                 let parameters = NWParametersBuilder<TCP>.parameters { TCP() }
                     .localEndpoint(.hostPort(host: .ipv4(.loopback), port: NWEndpoint.Port(rawValue: port) ?? .any))
                     .localEndpointReuseAllowed(true)
+                // No connection limit: NetworkListener's limit counts every connection ever accepted, not
+                // concurrent ones, so any cap would silently stop the server after that many requests.
                 let listener = try NetworkListener<TCP>(using: parameters)
-                    .newConnectionLimit(Self.connectionLimit)
                     .onStateUpdate { [weak self] _, newState in
                         self?.listenerStateChanged(newState, port: port)
                     }

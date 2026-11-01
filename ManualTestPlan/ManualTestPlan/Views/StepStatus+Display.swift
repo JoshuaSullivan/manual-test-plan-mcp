@@ -40,7 +40,7 @@ extension StepStatus {
     ///
     /// Tapping the status a step already has clears it back to pending, so a misclick is easy to undo.
     /// - Parameter current: The step's present status.
-    func afterSelecting(from current: StepStatus) -> StepStatus {
+    nonisolated func afterSelecting(from current: StepStatus) -> StepStatus {
         current == self ? .pending : self
     }
 }

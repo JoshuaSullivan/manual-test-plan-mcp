@@ -24,10 +24,19 @@ check() { # check <description> <expected substring> <actual>
   if [[ "$3" == *"$2"* ]]; then pass "$1"; else fail "$1 (expected to contain '$2', got: ${3:0:300})"; fi
 }
 
+SESSION=""
+
 rpc() { # rpc <json> [extra curl args...]
   local body="$1"; shift
-  curl -sS --max-time 90 -X POST "$URL" -H 'Content-Type: application/json' \
-    -H 'Accept: application/json, text/event-stream' ${SESSION:+-H "Mcp-Session-Id: $SESSION"} "$@" -d "$body"
+  local args=(-sS --max-time 90 -X POST "$URL" -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream')
+  if [[ -n "$SESSION" ]]; then args+=(-H "Mcp-Session-Id: $SESSION"); fi
+  curl "${args[@]}" "$@" -d "$body"
+}
+
+# call <id> <tool> <arguments-json>: a tools/call request. Bodies are built with single-quoted printf
+# templates because macOS's bash 3.2 mangles backslash-escaped quotes inside "$(...)".
+call() {
+  rpc "$(printf '{"jsonrpc":"2.0","id":%s,"method":"tools/call","params":{"name":"%s","arguments":%s}}' "$1" "$2" "$3")"
 }
 
 status() { # status <curl args...> -> HTTP status code only
@@ -56,12 +65,17 @@ CREATE="$(rpc '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"c
 PLAN_ID="$(printf '%s' "$CREATE" | grep -o 'tp_[a-z0-9]*' | head -1)"
 [[ -n "$PLAN_ID" ]] && pass "create_test_plan returned $PLAN_ID" || { fail "no plan_id in: $CREATE"; exit 1; }
 
-check "get_test_plan sees the plan" "Smoke test plan" "$(rpc "{\"jsonrpc\":\"2.0\",\"id\":4,\"method\":\"tools/call\",\"params\":{\"name\":\"get_test_plan\",\"arguments\":{\"plan_id\":\"$PLAN_ID\",\"detail\":\"full\"}}}")"
-check "list_test_plans finds it by keyword" "$PLAN_ID" "$(rpc '{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"list_test_plans","arguments":{"query":"smoke"}}}')"
-check "wait_for_test_plan times out cleanly" 'timed_out' "$(rpc "{\"jsonrpc\":\"2.0\",\"id\":6,\"method\":\"tools/call\",\"params\":{\"name\":\"wait_for_test_plan\",\"arguments\":{\"plan_id\":\"$PLAN_ID\",\"timeout_seconds\":1}}}")"
-check "complete without force is refused" 'force=true' "$(rpc "{\"jsonrpc\":\"2.0\",\"id\":7,\"method\":\"tools/call\",\"params\":{\"name\":\"complete_test_plan\",\"arguments\":{\"plan_id\":\"$PLAN_ID\"}}}")"
-check "complete with force succeeds" 'deleted from the user' "$(rpc "{\"jsonrpc\":\"2.0\",\"id\":8,\"method\":\"tools/call\",\"params\":{\"name\":\"complete_test_plan\",\"arguments\":{\"plan_id\":\"$PLAN_ID\",\"force\":true}}}")"
-check "plan is gone afterwards" 'No active test plan' "$(rpc "{\"jsonrpc\":\"2.0\",\"id\":9,\"method\":\"tools/call\",\"params\":{\"name\":\"get_test_plan\",\"arguments\":{\"plan_id\":\"$PLAN_ID\"}}}")"
+GET_ARGS="$(printf '{"plan_id":"%s","detail":"full"}' "$PLAN_ID")"
+PLAN_ARGS="$(printf '{"plan_id":"%s"}' "$PLAN_ID")"
+WAIT_ARGS="$(printf '{"plan_id":"%s","timeout_seconds":1}' "$PLAN_ID")"
+FORCE_ARGS="$(printf '{"plan_id":"%s","force":true}' "$PLAN_ID")"
+
+OUT="$(call 4 get_test_plan "$GET_ARGS")";                  check "get_test_plan sees the plan" "Smoke test plan" "$OUT"
+OUT="$(call 5 list_test_plans '{"query":"smoke"}')";       check "list_test_plans finds it by keyword" "$PLAN_ID" "$OUT"
+OUT="$(call 6 wait_for_test_plan "$WAIT_ARGS")";            check "wait_for_test_plan times out cleanly" "timed_out" "$OUT"
+OUT="$(call 7 complete_test_plan "$PLAN_ARGS")";            check "complete without force is refused" "force=true" "$OUT"
+OUT="$(call 8 complete_test_plan "$FORCE_ARGS")";           check "complete with force succeeds" "deleted from the user" "$OUT"
+OUT="$(call 9 get_test_plan "$PLAN_ARGS")";                 check "plan is gone afterwards" "No active test plan" "$OUT"
 
 echo "Security and HTTP behavior"
 check "browser Origin -> 403" "403" "$(status -X POST "$URL" -H 'Origin: https://evil.example' -d '{}')"
@@ -72,6 +86,14 @@ check "malformed JSON -> 400" "400" "$(status -X POST "$URL" -d '{nope')"
 check "chunked body -> 501" "501" "$(status -X POST "$URL" -H 'Transfer-Encoding: chunked' -d '{}')"
 BIG="$(python3 -c "import json; print(json.dumps({'jsonrpc':'2.0','id':10,'method':'ping','pad':'x'*200000}))")"
 check "200 KB body (Expect: 100-continue) accepted" "200" "$(status -X POST "$URL" -H 'Content-Type: application/json' -H 'Expect: 100-continue' -d "$BIG")"
+
+# Regression guard: NetworkListener's newConnectionLimit counts every connection ever accepted, so a cap
+# silently kills the server after that many requests. Every request here opens a new connection.
+BAD=0
+for i in $(seq 1 100); do
+  [[ "$(status -X POST "$URL" -H 'Content-Type: application/json' -d '{"jsonrpc":"2.0","id":1,"method":"ping"}')" == "200" ]] || BAD=$((BAD + 1))
+done
+if [[ "$BAD" -eq 0 ]]; then pass "100 consecutive connections all served"; else fail "$BAD of 100 consecutive connections failed"; fi
 
 echo
 if [[ "$FAILURES" -eq 0 ]]; then
