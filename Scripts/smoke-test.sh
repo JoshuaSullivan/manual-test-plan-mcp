@@ -51,7 +51,16 @@ if ! curl -sS --max-time 3 -o /dev/null "$URL" 2>/dev/null; then
 fi
 
 echo "Protocol"
-HEADERS="$(mktemp)"; trap 'rm -f "$HEADERS"' EXIT
+HEADERS="$(mktemp)"
+PLAN_ID=""
+# Always remove the plan this script creates, even if a check fails or the script is interrupted.
+cleanup() {
+  rm -f "$HEADERS"
+  if [[ -n "$PLAN_ID" ]]; then
+    call 99 complete_test_plan "$(printf '{"plan_id":"%s","force":true}' "$PLAN_ID")" >/dev/null 2>&1 || true
+  fi
+}
+trap cleanup EXIT
 INIT="$(rpc '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"smoke-test","version":"1"}}}' -D "$HEADERS")"
 check "initialize returns serverInfo" '"name":"ManualTestPlan"' "$INIT"
 SESSION="$(awk 'tolower($1)=="mcp-session-id:" {print $2}' "$HEADERS" | tr -d '\r')"
