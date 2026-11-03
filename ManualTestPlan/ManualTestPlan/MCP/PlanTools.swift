@@ -118,7 +118,10 @@ final class PlanTools: MCPToolProvider {
         )
         return .json(CreatedOutput(
             planID: plan.id,
-            message: "Plan created and opened on the user's Mac. Tell the user it is waiting, then call wait_for_test_plan.",
+            message: "Plan '\(plan.title)' was created and a window with that title opened on the user's Mac, but macOS may "
+                + "leave it behind other windows. Before anything else, tell the user in your reply that the test window is "
+                + "waiting for them, and that the checklist icon in the menu bar lists active plans if they can't find it. "
+                + "Then call wait_for_test_plan.",
             cases: plan.cases
         ))
     }

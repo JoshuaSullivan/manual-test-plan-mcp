@@ -18,7 +18,9 @@ nonisolated enum PlanToolSchemas {
 
         Workflow:
         1. create_test_plan with small, concrete, ordered steps. Give each step one observable outcome and \
-        put it in `expected`. A window opens for the user automatically; tell them it is waiting.
+        put it in `expected`. A window opens on the user's Mac automatically, but macOS may leave it behind \
+        other windows. Tell the user, in your reply, that a test window titled with the plan's title is \
+        waiting for them and that the checklist icon in their menu bar lists active plans if they can't find it.
         2. Call wait_for_test_plan repeatedly, passing back the `revision` it returns as `since_revision`, \
         until `resolved` is true. Or do other work and poll with get_test_plan.
         3. Read the user's notes on failed and blocked steps, and call get_step_evidence to see any \
@@ -43,6 +45,8 @@ nonisolated enum PlanToolSchemas {
         description: """
             Create a manual test plan for the user to work through and open it in a window on their Mac. \
             Returns the plan_id plus case_id and step_id values; keep them to query results later. \
+            The window may open behind other windows, so after calling this always tell the user that it is \
+            waiting and what it is called. \
             Write each step as an action the user can perform plus the outcome they should see. The user marks \
             every step passed, failed, or blocked, and may add notes and attach files such as screenshots or logs.
             """,
