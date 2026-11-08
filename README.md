@@ -206,6 +206,8 @@ Shortcuts are ignored while you're typing in a note.
 
 Images are normalized: PNG, JPEG, GIF, and WebP up to 3000 px are kept as-is, and anything larger or in another format becomes PNG, scaled down. Click an attachment for Open, Show in Finder, or Remove (Remove deletes the file immediately).
 
+Once you scroll past the header, a floating bar keeps overall progress in view with **previous** and **next** buttons. They jump to the nearest step that has no verdict yet (opening its case if it was collapsed), wrapping around at the ends.
+
 **Copy Report** in the plan window copies the current results as Markdown.
 
 ### What the agent sees

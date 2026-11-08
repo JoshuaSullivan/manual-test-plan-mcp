@@ -16,6 +16,11 @@ struct StepNavigatorTests {
         ])
     }
 
+    private func judge(_ id: String, _ status: StepStatus, in plan: inout TestPlan) {
+        guard let location = plan.location(ofStep: id) else { return }
+        plan.cases[location.caseIndex].steps[location.stepIndex].status = status
+    }
+
     @Test func walksStepsAcrossCases() {
         let plan = makePlan()
         let navigator = StepNavigator(plan: plan)
@@ -45,6 +50,53 @@ struct StepNavigatorTests {
         plan.cases[1].steps[0].status = .failed
         #expect(plan.step(withID: ids[0])?.status == .pending)
         #expect(navigator.nextPending(after: ids[2], in: plan) == ids[0])
+    }
+
+    @Test func jumpsToTheNearestPendingStepInEitherDirection() {
+        var plan = makePlan()
+        let ids = plan.cases.flatMap(\.steps).map(\.id)
+        let navigator = StepNavigator(plan: plan)
+        judge(ids[1], .passed, in: &plan)
+
+        // Pending: a1 (ids[0]) and b1 (ids[2]). a2 is judged.
+        #expect(navigator.pendingStep(from: ids[0], forward: true, in: plan) == ids[2])
+        #expect(navigator.pendingStep(from: ids[1], forward: true, in: plan) == ids[2])
+        #expect(navigator.pendingStep(from: ids[2], forward: false, in: plan) == ids[0])
+        #expect(navigator.pendingStep(from: ids[1], forward: false, in: plan) == ids[0])
+    }
+
+    @Test func jumpingWrapsAndLandsOnTheOnlyPendingStep() {
+        var plan = makePlan()
+        let ids = plan.cases.flatMap(\.steps).map(\.id)
+        let navigator = StepNavigator(plan: plan)
+
+        #expect(navigator.pendingStep(from: ids[2], forward: true, in: plan) == ids[0])
+        #expect(navigator.pendingStep(from: ids[0], forward: false, in: plan) == ids[2])
+
+        judge(ids[0], .passed, in: &plan)
+        judge(ids[1], .failed, in: &plan)
+        #expect(navigator.pendingStep(from: ids[2], forward: true, in: plan) == ids[2])
+        #expect(navigator.pendingStep(from: ids[2], forward: false, in: plan) == ids[2])
+    }
+
+    @Test func jumpingWithoutAReferenceStartsAtTheEnds() {
+        let plan = makePlan()
+        let ids = plan.cases.flatMap(\.steps).map(\.id)
+        let navigator = StepNavigator(plan: plan)
+
+        #expect(navigator.pendingStep(from: nil, forward: true, in: plan) == ids[0])
+        #expect(navigator.pendingStep(from: nil, forward: false, in: plan) == ids[2])
+        #expect(navigator.pendingStep(from: "st_unknown", forward: true, in: plan) == ids[0])
+    }
+
+    @Test func jumpingFindsNothingWhenEveryStepHasAVerdict() {
+        var plan = makePlan()
+        let ids = plan.cases.flatMap(\.steps).map(\.id)
+        let navigator = StepNavigator(plan: plan)
+        for id in ids { judge(id, .passed, in: &plan) }
+
+        #expect(navigator.pendingStep(from: ids[0], forward: true, in: plan) == nil)
+        #expect(navigator.pendingStep(from: nil, forward: false, in: plan) == nil)
     }
 
     @Test func reportsNoPendingStepsWhenEverythingIsJudged() {

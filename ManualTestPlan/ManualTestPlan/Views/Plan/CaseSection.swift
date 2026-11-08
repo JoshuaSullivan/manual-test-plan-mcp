@@ -13,7 +13,8 @@ struct CaseSection: View {
     let navigator: StepNavigator
     let focusedStep: FocusState<String?>.Binding
 
-    @State private var isExpanded = true
+    /// Owned by the plan window so that jumping to a step can open the section that contains it.
+    @Binding var isExpanded: Bool
 
     var body: some View {
         DisclosureGroup(isExpanded: $isExpanded) {
@@ -25,6 +26,7 @@ struct CaseSection: View {
                 }
                 ForEach(testCase.steps) { step in
                     StepRow(plan: plan, step: step, navigator: navigator, focusedStep: focusedStep)
+                        .id(step.id)
                 }
             }
             .padding(.top)
