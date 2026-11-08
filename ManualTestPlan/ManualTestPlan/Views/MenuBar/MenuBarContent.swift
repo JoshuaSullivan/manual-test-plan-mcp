@@ -44,7 +44,8 @@ struct MenuBarContent: View {
             }
             .keyboardShortcut("q")
         }
-        .buttonStyle(.plain)
+        .buttonStyle(MenuRowButtonStyle())
+        .labelStyle(MenuRowLabelStyle())
         .padding()
         .frame(minWidth: 320)
     }
