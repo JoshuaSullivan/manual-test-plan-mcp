@@ -171,7 +171,7 @@ Agents learn the workflow from the server's built-in instructions and tool descr
 
 ### Finding the window
 
-macOS doesn't let a background app take focus from the app you're working in, so a new plan's window may open **behind** your other windows. The app doesn't force it to the front, because a pinned window would cover the app you're testing. Instead:
+macOS doesn't let a background app take focus from the app you're working in, so a new plan's window may open **behind** your other windows. By default the app doesn't force it to the front, because a pinned window would cover the app you're testing. Instead:
 
 - You get a notification when a plan is created (allow notifications when prompted).
 - The agent is instructed to tell you in chat that the window is waiting.
@@ -220,6 +220,7 @@ Images are normalized: PNG, JPEG, GIF, and WebP up to 3000 px are kept as-is, an
 Open from the menu bar popover, or `⌘,`.
 
 - **Port**: default 47821, allowed range 1024–65535. Change it, press **Apply and Restart Server**, and update your clients.
+- **Keep plan windows on top**: plan windows float above other apps' windows, so they can't get lost behind the app you're testing. Off by default, because on a small screen a floating window can cover what you're testing. Takes effect immediately.
 - **Launch at login**: starts the app at login. macOS may ask you to approve it in *System Settings › General › Login Items*.
 - **Connect an Agent**: the Claude Code setup command, with a copy button.
 

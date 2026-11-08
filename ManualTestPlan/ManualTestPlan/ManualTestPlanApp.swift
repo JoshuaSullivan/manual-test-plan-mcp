@@ -26,6 +26,7 @@ struct ManualTestPlanApp: App {
                     .environment(model)
             }
         }
+        .windowLevel(model.keepPlanWindowsOnTop ? .floating : .normal)
         .defaultLaunchBehavior(.suppressed)
         .defaultSize(width: 720, height: 800)
 

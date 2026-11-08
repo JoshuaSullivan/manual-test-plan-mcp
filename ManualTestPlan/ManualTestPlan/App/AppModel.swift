@@ -15,6 +15,7 @@ final class AppModel {
     nonisolated static let defaultPort: UInt16 = 47821
 
     private nonisolated static let portDefaultsKey = "serverPort"
+    private nonisolated static let keepOnTopDefaultsKey = "keepPlanWindowsOnTop"
 
     /// All active plans.
     let store: PlanStore
@@ -25,6 +26,12 @@ final class AppModel {
 
     /// The port the server listens on (or will, once started).
     private(set) var port: UInt16
+
+    /// Whether plan windows float above other apps' windows. Off by default: a floating window can cover the
+    /// app being tested, which is a real problem on a laptop screen. Persisted across launches.
+    var keepPlanWindowsOnTop: Bool {
+        didSet { defaults.set(keepPlanWindowsOnTop, forKey: Self.keepOnTopDefaultsKey) }
+    }
 
     @ObservationIgnored private let defaults: UserDefaults
     @ObservationIgnored private var hasStarted = false
@@ -48,6 +55,7 @@ final class AppModel {
         self.notifier = notifier
         self.launchAtLogin = launchAtLogin
         let saved = defaults.integer(forKey: Self.portDefaultsKey)
+        self.keepPlanWindowsOnTop = defaults.bool(forKey: Self.keepOnTopDefaultsKey)
         self.port = UInt16(exactly: saved).flatMap { $0 >= Self.minimumPort ? $0 : nil } ?? Self.defaultPort
         self.server = MCPServer(router: MCPRouter(tools: PlanTools(store: store)))
 

@@ -252,6 +252,18 @@ struct AppModelTests {
         #expect(makeModel(defaults: defaults).port == AppModel.defaultPort)
     }
 
+    @Test func keepsPlanWindowsOnTopOnlyWhenAskedAndRemembersIt() {
+        let defaults = isolatedDefaults()
+        let first = makeModel(defaults: defaults)
+        #expect(first.keepPlanWindowsOnTop == false)
+
+        first.keepPlanWindowsOnTop = true
+        #expect(makeModel(defaults: defaults).keepPlanWindowsOnTop)
+
+        first.keepPlanWindowsOnTop = false
+        #expect(!makeModel(defaults: defaults).keepPlanWindowsOnTop)
+    }
+
     @Test func countsOnlyPlansWithPendingSteps() async throws {
         let model = makeModel(defaults: isolatedDefaults())
         let waiting = model.store.createPlan(title: "Waiting", cases: [TestCase(title: "C", steps: [TestStep(instruction: "x")])])

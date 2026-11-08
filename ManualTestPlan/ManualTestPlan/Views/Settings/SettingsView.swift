@@ -33,6 +33,11 @@ struct SettingsView: View {
             }
 
             Section("General") {
+                @Bindable var model = model
+                Toggle("Keep plan windows on top", isOn: $model.keepPlanWindowsOnTop)
+                Text("Plan windows float above other apps so they never get lost behind the app you're testing. They can cover what you're testing, so this is off by default.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
                 Toggle("Launch at login", isOn: launchAtLoginBinding)
                 if model.launchAtLogin.needsApproval {
                     Text("Approve ManualTestPlan in System Settings › General › Login Items.")
