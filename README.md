@@ -232,6 +232,34 @@ An agent calls `complete_test_plan` when it's done. By default it is refused whi
 
 You can't complete a plan from the UI. Only the agent does, which is deliberate: it's the only party that knows it has finished reading your results. If an agent has gone away and left a plan behind, a later agent can find it with `list_test_plans` and complete it.
 
+### Picking up a plan after a broken connection
+
+A plan lives in the app, not in the agent's session. Your verdicts, notes and attachments are saved to disk as you work, so none of this is lost when the connection drops:
+
+- the agent's session ends, is replaced, or loses its context,
+- you switch to a different agent or model,
+- the agent stops waiting (a turn limit, an interruption, a timeout),
+- the app restarts, or the Mac does.
+
+When you've finished, start or reopen any agent session that has ManualTestPlan connected and tell it. It can find the plan itself:
+
+> I've finished the ManualTestPlan test plan for the kanban changes. Find it, read my results, and fix whatever failed or was blocked.
+
+The agent does this with three calls:
+
+1. `list_test_plans`, optionally with keywords, to find the plan. With no keywords it lists every active plan with its ID, title, creator, progress, and whether every step has a verdict. Keywords match the plan's ID, title, summary, steps and your notes.
+2. `get_test_plan` with the `plan_id`, to read your results. `detail: "full"` returns every step, not just the failed and blocked ones.
+3. `get_step_evidence` for each step with attachments, to see your screenshots and logs.
+
+It can then go on as normal: `revise_step` or `add_to_test_plan` to fix the plan, `wait_for_test_plan` to wait for more verdicts, and `complete_test_plan` to finish.
+
+A few things to know:
+
+- **You don't need the plan ID.** Keywords or a bare "find my test plan" is enough, since the agent can list everything. If you have several plans open at once, name the one you mean.
+- **Any agent can do it.** The plan isn't tied to the agent that created it. The window shows who created it, but another agent can read, revise and complete it.
+- **Unfinished steps stay pending.** If you stopped partway, say so. An agent that completes a plan with pending steps has to pass `force: true`, and it should check with you first.
+- **A plan with no agent left to complete it stays on disk** until some agent completes it. It reloads every time the app launches.
+
 ## Tools reference
 
 | Tool | Purpose |
@@ -294,7 +322,7 @@ An `{"jsonrpc":"2.0","id":1,"result":{}}` reply means the server is fine and the
 
 **No notifications.** Allow them in *System Settings › Notifications › ManualTestPlan*.
 
-**A plan was left behind.** Ask any agent to `list_test_plans` and `complete_test_plan` with `force: true`.
+**A plan was left behind.** Ask any agent to find it and read the results (see [Picking up a plan after a broken connection](#picking-up-a-plan-after-a-broken-connection)). To get rid of it, have the agent `complete_test_plan`, with `force: true` if steps are still pending.
 
 ## Development
 
